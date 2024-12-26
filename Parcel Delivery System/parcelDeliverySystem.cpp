@@ -3,6 +3,8 @@
 #include <queue>
 #include <stack>
 #include <list>
+#include <algorithm>
+#include <limits> 
 
 using namespace std;
 
@@ -176,12 +178,41 @@ public:
 
     // Generate reports
     void generateReports() {
+
         cout << "Total parcels delivered: " << totalDelivered << endl;
-        cout << "Parcels pending delivery: " << loadingQueue.size() << endl;
+        // Delivered parcels
         cout << "Delivered parcels:\n";
         for (const auto& parcel : deliveredParcels) {
             cout << "ID: " << parcel.id << ", Recipient: " << parcel.recipient << endl;
-        }
+        };
+        // Parcels pending delivery by priority
+            cout << "Parcels pending delivery by priority:\n";
+            vector<Parcel> pendingParcels;
+            queue<Parcel> tempQueue = loadingQueue;
+            while (!tempQueue.empty()) {
+                pendingParcels.push_back(tempQueue.front());
+                tempQueue.pop();
+            }
+            sort(pendingParcels.begin(), pendingParcels.end(), [](const Parcel& p1, const Parcel& p2) {
+                return p1.priority < p2.priority;
+            });
+            for (const auto& parcel : pendingParcels) {
+                cout << "ID: " << parcel.id << ", Priority: " << parcel.priority << endl;
+            }
+
+            // Delivery routes used
+           cout << "Delivery routes used (order of delivery as entered):\n";
+            if (!deliveredParcels.empty()) {
+                auto it = deliveredParcels.begin();
+                cout << "ID: " << it->id;
+                ++it;
+                for (; it != deliveredParcels.end(); ++it) {
+                    cout << " - ID: " << it->id;
+                }
+                cout << endl;
+            } else {
+                cout << "No delivery routes used." << endl;
+            }    
     }
 };
 
@@ -201,42 +232,77 @@ int main() {
         cout << "7. Redo Last Action\n";
         cout << "8. Exit\n";
         cout << "Enter your choice: ";
-        cin >> choice;
+
+        // Validate menu choice
+        while (!(cin >> choice) || choice < 1 || choice > 8) {
+            cout << "Invalid input. Please enter a number between 1 and 8: ";
+            cin.clear(); // Clear error state
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Ignore invalid input
+        }
+
+        cin.ignore(); // Clear input buffer for subsequent getline calls
 
         switch (choice) {
             case 1:
                 cout << "Enter Recipient Name: ";
-                cin.ignore();
                 getline(cin, recipient);
+                while (recipient.empty()) {
+                    cout << "Recipient name cannot be empty. Please enter a valid name: ";
+                    getline(cin, recipient);
+                }
+
                 cout << "Enter Address: ";
                 getline(cin, address);
+                while (address.empty()) {
+                    cout << "Address cannot be empty. Please enter a valid address: ";
+                    getline(cin, address);
+                }
+
                 cout << "Enter Priority (lower number means higher priority): ";
-                cin >> priority;
+                while (!(cin >> priority) || priority < 1) {
+                    cout << "Invalid input. Please enter a valid priority (positive number): ";
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
+
                 system.registerParcel(recipient, address, priority);
                 break;
+
             case 2:
                 system.loadParcels();
                 break;
+
             case 3:
                 system.deliverParcel();
                 break;
+
             case 4:
                 cout << "Enter Parcel ID to search: ";
-                cin >> id;
+                while (!(cin >> id) || id < 1) {
+                    cout << "Invalid input. Please enter a valid Parcel ID (positive number): ";
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
+
                 system.searchParcelById(id);
                 break;
+
             case 5:
                 system.generateReports();
                 break;
+
             case 6:
                 system.undoLastAction();
                 break;
+
             case 7:
                 system.redoLastAction();
                 break;
+
             case 8:
                 cout << "Exiting the system." << endl;
                 break;
+
             default:
                 cout << "Invalid choice. Please try again." << endl;
         }
