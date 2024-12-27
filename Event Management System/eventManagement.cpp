@@ -295,16 +295,12 @@ public:
     cout << "----- Event Report -----\n";
     eventBST.inorderTraversal(); // Assuming this method displays events and their participants
     cout << "-------------------------\n";
-    }
-    void generateParticipantReport() {
     cout << "----- Participant Report -----\n";
     // Assuming you have a way to iterate through all events
     // You might need to modify EventBST to allow this
     // For now, we will just display participants for each event
     eventBST.inorderTraversal(); // This should be modified to show only participants
     cout << "-------------------------------\n";
-    }
-    void generateCheckInStatistics() {
     cout << "----- Check-in Statistics -----\n";
     cout << "Total Check-ins: " << checkInQueue.size() << "\n";
     cout << "Participants Checked In:\n";
@@ -317,10 +313,7 @@ public:
         tempQueue.pop();
     }
     cout << "-------------------------------\n";
-}
-
-
-
+    };
 };
 
 int main() {
@@ -339,9 +332,7 @@ int main() {
         cout << "8. View Next Check-in\n";
         cout << "9. Undo Last Operation\n";
         cout << "10. Redo Last Operation\n";
-        cout << "11. Generate Event Report\n"; // New option
-        cout << "12. Generate Participant Report\n"; // New option
-        cout << "13. Generate Check-in Statistics\n"; // New option
+        cout << "11. Generate Event Report\n";
         cout << "0. Exit\n";
         cout << "Enter your choice: ";
         cin >> choice;
@@ -351,16 +342,19 @@ int main() {
                 string name, category;
                 int priority;
                 cout << "Enter event name: ";
+                cin.ignore(); // Clear the buffer before using getline
                 getline(cin, name);
-                cin.ignore();
+
                 cout << "Enter event category: ";
                 getline(cin, category);
-                cin.ignore();
+
                 cout << "Enter event priority: ";
                 cin >> priority;
+
                 ems.createEvent(name, category, priority);
                 break;
             }
+
             case 2: {
                 string category;
                 cout << "Enter category: ";
@@ -376,19 +370,22 @@ int main() {
                 string oldName, newName, category;
                 int priority;
                 cout << "Enter current event name: ";
+                cin.ignore(); // Clear the buffer
                 getline(cin, oldName);
-                cin.ignore();
+
                 cout << "Enter new event name: ";
                 getline(cin, newName);
-                cin.ignore();
+
                 cout << "Enter new category: ";
                 getline(cin, category);
-                cin.ignore();
+
                 cout << "Enter new priority: ";
                 cin >> priority;
+
                 ems.updateEvent(oldName, newName, category, priority);
                 break;
             }
+
             case 5: {
                 string name;
                 cout << "Enter event name: ";
@@ -427,12 +424,6 @@ int main() {
                 break;
             case 11:
                 ems.generateEventReport();
-                break;
-            case 12:
-                ems.generateParticipantReport();
-                break;
-            case 13:
-                ems.generateCheckInStatistics();
                 break;
             case 0:
                 cout << "Exiting the system. Goodbye!\n";

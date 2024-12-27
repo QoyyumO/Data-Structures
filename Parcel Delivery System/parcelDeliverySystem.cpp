@@ -4,7 +4,7 @@
 #include <stack>
 #include <list>
 #include <algorithm>
-#include <limits> 
+#include <limits> // aided by AI for validation
 
 using namespace std;
 
@@ -36,16 +36,16 @@ struct BSTNode {
 class ParcelDeliverySystem {
 private:
     list<Parcel> parcelList;
-    priority_queue<Parcel, vector<Parcel>, ComparePriority> priorityQueue; // Priority queue
-    queue<Parcel> loadingQueue; // Queue for loading parcels
-    list<Parcel> deliveredParcels; // Linked list for delivered parcels
-    stack<pair<string, Parcel>> actionStack; // Stack for undo actions
-    stack<pair<string, Parcel>> redoStack; // Stack for redo actions
-    BSTNode* root; // Root of the BST for searching parcels
+    priority_queue<Parcel, vector<Parcel>, ComparePriority> priorityQueue;
+    queue<Parcel> loadingQueue;
+    list<Parcel> deliveredParcels;
+    stack<pair<string, Parcel>> actionStack; // Stack for undo actions aided by AI
+    stack<pair<string, Parcel>> redoStack; // Stack for redo actions aided by AI
+    BSTNode* root;
     int totalDelivered;
     int nextParcelId; // To keep track of the next parcel ID
 
-    // Helper function to insert into BST
+    // function to insert into BST
     BSTNode* insertBST(BSTNode* node, Parcel parcel) {
         if (node == nullptr) {
             return new BSTNode(parcel);
@@ -58,7 +58,7 @@ private:
         return node;
     }
 
-    // Helper function to search in BST
+    // function to search in BST
     BSTNode* searchBST(BSTNode* node, int id) {
         if (node == nullptr || node->parcel.id == id) {
             return node;
@@ -142,7 +142,7 @@ public:
         }
     }
 
-    // Redo last undone action
+    // Redo last undone action aided by AI
     void redoLastAction() {
         if (!redoStack.empty()) {
             auto lastUndone = redoStack.top();
@@ -185,7 +185,7 @@ public:
         for (const auto& parcel : deliveredParcels) {
             cout << "ID: " << parcel.id << ", Recipient: " << parcel.recipient << endl;
         };
-        // Parcels pending delivery by priority
+        // Parcels pending delivery by priority aided by AI
             cout << "Parcels pending delivery by priority:\n";
             vector<Parcel> pendingParcels;
             queue<Parcel> tempQueue = loadingQueue;
@@ -200,7 +200,7 @@ public:
                 cout << "ID: " << parcel.id << ", Priority: " << parcel.priority << endl;
             }
 
-            // Delivery routes used
+            // Delivery routes used aided by AI
            cout << "Delivery routes used (order of delivery as entered):\n";
             if (!deliveredParcels.empty()) {
                 auto it = deliveredParcels.begin();
