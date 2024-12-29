@@ -140,4 +140,4 @@ Copyright (c) 2024 Event Management System
 
 ---
 
-Developed as a demonstration of efficient data structure usage in C++ for a parcel delivery system.
+Developed as a demonstration of efficient data structure usage in C++ for an event management system
