@@ -1,74 +1,13 @@
 #include <iostream>
 #include <string>
-#include <vector>
+#include <list>
 #include <queue>
 #include <stack>
 #include <map>
 #include <algorithm>
+#include <limits>
 
 using namespace std;
-
-// Participant Node for Linked List
-class ParticipantNode {
-public:
-    string name;
-    string studentID;
-    string contactInfo;
-    ParticipantNode* next;
-
-    ParticipantNode(string n = "", string id = "", string contact = "") 
-        : name(n), studentID(id), contactInfo(contact), next(nullptr) {}
-};
-
-// Linked List for Participants
-class ParticipantList {
-private:
-    ParticipantNode* head;
-
-public:
-    ParticipantList() : head(nullptr) {}
-
-    void addParticipant(const string& name, const string& studentID, const string& contactInfo) {
-        ParticipantNode* newNode = new ParticipantNode(name, studentID, contactInfo);
-        newNode->next = head;
-        head = newNode;
-    }
-
-    void removeParticipant(const string& studentID) {
-        ParticipantNode* current = head;
-        ParticipantNode* prev = nullptr;
-        while (current) {
-            if (current->studentID == studentID) {
-                if (prev) {
-                    prev->next = current->next;
-                } else {
-                    head = current->next;
-                }
-                delete current;
-                return;
-            }
-            prev = current;
-            current = current->next;
-        }
-    }
-
-    void displayParticipants() const {
-        ParticipantNode* current = head;
-        while (current) {
-            cout << "- " << current->name 
-                 << " (ID: " << current->studentID << ")\n";
-            current = current->next;
-        }
-    }
-
-    ~ParticipantList() {
-        while (head) {
-            ParticipantNode* temp = head;
-            head = head->next;
-            delete temp;
-        }
-    }
-};
 
 // Node for BST
 class EventNode {
@@ -77,8 +16,7 @@ public:
     string category;
     EventNode* left;
     EventNode* right;
-    ParticipantList participants;
-
+    list<pair<string, string>> participants; // Pair of participant name and ID
     EventNode(string n, string c) : name(n), category(c), left(nullptr), right(nullptr) {}
 };
 
@@ -98,7 +36,9 @@ public:
     }
 
     void displayByCategory(const string& category) {
-        displayByCategoryHelper(root, category);
+        string lowerCategory = category;
+        transform(lowerCategory.begin(), lowerCategory.end(), lowerCategory.begin(), ::tolower);
+        displayByCategoryHelper(root, lowerCategory);
     }
 
     void inorderTraversal() {
@@ -126,10 +66,18 @@ private:
     void displayByCategoryHelper(EventNode* node, const string& category) {
         if (node) {
             displayByCategoryHelper(node->left, category);
-            if (node->category == category) {
+            
+            // Convert the event's category to lower case for comparison
+            string eventCategory = node->category;
+            transform(eventCategory.begin(), eventCategory.end(), eventCategory.begin(), ::tolower);
+            
+            if (eventCategory == category) {
                 cout << "Event: " << node->name << "\n";
-                node->participants.displayParticipants();
+                for (const auto& participant : node->participants) {
+                    cout << "- " << participant.first << " (ID: " << participant.second << ")\n";
+                }
             }
+            
             displayByCategoryHelper(node->right, category);
         }
     }
@@ -139,7 +87,9 @@ private:
             inorderHelper(node->left);
             cout << "Event: " << node->name 
                  << " (Category: " << node->category << ")\n";
-            node->participants.displayParticipants();
+            for (const auto& participant : node->participants) {
+                cout << "- " << participant.first << " (ID: " << participant.second << ")\n";
+            }
             inorderHelper(node->right);
         }
     }
@@ -180,7 +130,8 @@ private:
     priority_queue<pair<int, EventNode*>, vector<pair<int, EventNode*>>, greater<>> scheduledEvents;
     stack<EventNode*> undoStack;
     stack<EventNode*> redoStack;
-    queue<ParticipantNode*> checkInQueue;
+    queue<pair<string, string>> checkInQueue; // Pair of participant name and ID
+    int participantIDCounter = 1; // Automatic ID counter
 
 public:
     // Create Event
@@ -213,6 +164,19 @@ public:
     void updateEvent(string oldName, const string& newName, const string& category, int priority) {
         EventNode* event = eventBST.search(oldName);
         if (event) {
+            // Remove the old event from the scheduled events queue
+            // Create a temporary queue to hold scheduled events
+            priority_queue<pair<int, EventNode*>, vector<pair<int, EventNode*>>, greater<>> tempQueue;
+            while (!scheduledEvents.empty()) {
+                auto scheduledEvent = scheduledEvents.top();
+                scheduledEvents.pop();
+                if (scheduledEvent.second->name != oldName) {
+                    tempQueue.push(scheduledEvent); // Keep events that are not being updated
+                }
+            }
+            scheduledEvents = tempQueue; // Update the scheduled events queue
+
+            // Proceed with the update
             undoStack.push(event);
             eventBST.deleteEvent(oldName);
             createEvent(newName, category, priority);
@@ -226,6 +190,18 @@ public:
     void deleteEvent(const string& name) {
         EventNode* event = eventBST.search(name);
         if (event) {
+            // Remove the event from the scheduled events queue
+            // Create a temporary queue to hold scheduled events
+            priority_queue<pair<int, EventNode*>, vector<pair<int, EventNode*>>, greater<>> tempQueue;
+            while (!scheduledEvents.empty()) {
+                auto scheduledEvent = scheduledEvents.top();
+                scheduledEvents.pop();
+                if (scheduledEvent.second->name != name) {
+                    tempQueue.push(scheduledEvent); // Keep events that are not being deleted
+                }
+            }
+            scheduledEvents = tempQueue; // Update the scheduled events queue
+
             undoStack.push(event);
             eventBST.deleteEvent(name);
             cout << "Event deleted successfully.\n";
@@ -235,11 +211,12 @@ public:
     }
 
     // Register Participant
-    void registerParticipant(const string& eventName, const string& name, const string& studentID, const string& contactInfo) {
+    void registerParticipant(const string& eventName, const string& name) {
         EventNode* event = eventBST.search(eventName);
         if (event) {
-            event->participants.addParticipant(name, studentID, contactInfo);
-            checkInQueue.push(new ParticipantNode(name, studentID, contactInfo));
+            string participantID = "P" + to_string(participantIDCounter++);
+            event->participants.push_back({name, participantID});
+            checkInQueue.push({name, participantID});
             cout << "Participant registered successfully.\n";
         } else {
             cout << "Event not found.\n";
@@ -249,10 +226,9 @@ public:
     // Process Check-in
     void processCheckIn() {
         if (!checkInQueue.empty()) {
-            ParticipantNode* p = checkInQueue.front();
+            auto [name, studentID] = checkInQueue.front();
             checkInQueue.pop();
-            cout << "Checked in: " << p->name << " (ID: " << p->studentID << ")\n";
-            delete p;
+            cout << "Checked in: " << name << " (ID: " << studentID << ")\n";
         } else {
             cout << "No participants in check-in queue.\n";
         }
@@ -261,8 +237,8 @@ public:
     // View Next Check-in
     void viewNextCheckIn() {
         if (!checkInQueue.empty()) {
-            ParticipantNode* p = checkInQueue.front();
-            cout << "Next in line: " << p->name << " (ID: " << p->studentID << ")\n";
+            auto [name, studentID] = checkInQueue.front();
+            cout << "Next in line: " << name << " (ID: " << studentID << ")\n";
         } else {
             cout << "No participants in check-in queue.\n";
         }
@@ -291,28 +267,25 @@ public:
             cout << "No operations to redo.\n";
         }
     }
+
     void generateEventReport() {
-    cout << "----- Event Report -----\n";
-    eventBST.inorderTraversal(); // Assuming this method displays events and their participants
-    cout << "-------------------------\n";
-    cout << "----- Participant Report -----\n";
-    // Assuming you have a way to iterate through all events
-    // You might need to modify EventBST to allow this
-    // For now, we will just display participants for each event
-    eventBST.inorderTraversal(); // This should be modified to show only participants
-    cout << "-------------------------------\n";
-    cout << "----- Check-in Statistics -----\n";
-    cout << "Total Check-ins: " << checkInQueue.size() << "\n";
-    cout << "Participants Checked In:\n";
-    
-    // Create a temporary queue to display participants without modifying the original queue
-    queue<ParticipantNode*> tempQueue = checkInQueue;
-    while (!tempQueue.empty()) {
-        ParticipantNode* p = tempQueue.front();
-        cout << "- " << p->name << " (ID: " << p->studentID << ")\n";
-        tempQueue.pop();
-    }
-    cout << "-------------------------------\n";
+        cout << "----- Event Report -----\n";
+        eventBST.inorderTraversal();
+        cout << "-------------------------\n";
+
+        cout << "----- Check-in Statistics -----\n";
+        cout << "Total Check-ins: " << checkInQueue.size() << "\n";
+        cout << "-------------------------------\n";
+        cout << "Participants Checked In:\n";
+
+        // Create a temporary queue to display participants without modifying the original queue
+        queue<pair<string, string>> tempQueue = checkInQueue;
+        while (!tempQueue.empty()) {
+            auto [name, studentID] = tempQueue.front();
+            cout << "- " << name << " (ID: " << studentID << ")\n";
+            tempQueue.pop();
+        }
+        cout << "-------------------------------\n";
     };
 };
 
@@ -335,31 +308,64 @@ int main() {
         cout << "11. Generate Event Report\n";
         cout << "0. Exit\n";
         cout << "Enter your choice: ";
-        cin >> choice;
+
+        // Validate menu choice
+        while (!(cin >> choice) || choice < 0 || choice > 11) {
+            cout << "Invalid input. Please enter a number between 0 and 11: ";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
 
         switch (choice) {
             case 1: {
                 string name, category;
                 int priority;
-                cout << "Enter event name: ";
-                cin.ignore(); // Clear the buffer before using getline
-                getline(cin, name);
 
-                cout << "Enter event category: ";
-                getline(cin, category);
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                
+                // Validate event name
+                do {
+                    cout << "Enter event name (cannot be empty): ";
+                    getline(cin, name);
+                    if (name.empty()) {
+                        cout << "Event name cannot be empty. Please try again.\n";
+                    }
+                } while (name.empty());
 
-                cout << "Enter event priority: ";
-                cin >> priority;
+                // Validate category
+                do {
+                    cout << "Enter event category (cannot be empty): ";
+                    getline(cin, category);
+                    if (category.empty()) {
+                        cout << "Category cannot be empty. Please try again.\n";
+                    }
+                } while (category.empty());
+
+                // Validate priority
+                do {
+                    cout << "Enter event priority (1-10): ";
+                    while (!(cin >> priority)) {
+                        cout << "Invalid input. Enter a number between 1-10: ";
+                        cin.clear();
+                        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    }
+                } while (priority < 1 || priority > 10);
 
                 ems.createEvent(name, category, priority);
                 break;
             }
-
             case 2: {
                 string category;
-                cout << "Enter category: ";
-                getline(cin,category);
-                cin.ignore();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                
+                do {
+                    cout << "Enter category (cannot be empty): ";
+                    getline(cin, category);
+                    if (category.empty()) {
+                        cout << "Category cannot be empty. Please try again.\n";
+                    }
+                } while (category.empty());
+                
                 ems.viewEventsByCategory(category);
                 break;
             }
@@ -369,45 +375,87 @@ int main() {
             case 4: {
                 string oldName, newName, category;
                 int priority;
-                cout << "Enter current event name: ";
-                cin.ignore(); // Clear the buffer
-                getline(cin, oldName);
 
-                cout << "Enter new event name: ";
-                getline(cin, newName);
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                
+                // Validate old event name
+                do {
+                    cout << "Enter old event name (cannot be empty): ";
+                    getline(cin, oldName);
+                    if (oldName.empty()) {
+                        cout << "Event name cannot be empty. Please try again.\n";
+                    }
+                } while (oldName.empty());
 
-                cout << "Enter new category: ";
-                getline(cin, category);
+                // Validate new event name
+                do {
+                    cout << "Enter new event name (cannot be empty): ";
+                    getline(cin, newName);
+                    if (newName.empty()) {
+                        cout << "Event name cannot be empty. Please try again.\n";
+                    }
+                } while (newName.empty());
 
-                cout << "Enter new priority: ";
-                cin >> priority;
+                // Validate new category
+                do {
+                    cout << "Enter new category (cannot be empty): ";
+                    getline(cin, category);
+                    if (category.empty()) {
+                        cout << "Category cannot be empty. Please try again.\n";
+                    }
+                } while (category.empty());
+
+                // Validate new priority
+                do {
+                    cout << "Enter new priority (1-10): ";
+                    while (!(cin >> priority)) {
+                        cout << "Invalid input. Enter a number between 1-10: ";
+                        cin.clear();
+                        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    }
+                } while (priority < 1 || priority > 10);
 
                 ems.updateEvent(oldName, newName, category, priority);
                 break;
             }
-
             case 5: {
                 string name;
-                cout << "Enter event name: ";
-                getline(cin, name);
-                cin.ignore();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                
+                do {
+                    cout << "Enter event name to delete (cannot be empty): ";
+                    getline(cin, name);
+                    if (name.empty()) {
+                        cout << "Event name cannot be empty. Please try again.\n";
+                    }
+                } while (name.empty());
+
                 ems.deleteEvent(name);
                 break;
             }
             case 6: {
-                string eventName, name, studentID, contactInfo;
-                cout << "Enter event name: ";
-                getline(cin, eventName);
-                cin.ignore();
-                cout << "Enter participant name: ";
-                getline(cin, name);
-                cin.ignore();
-                cout << "Enter participant ID: ";
-                getline(cin, studentID);
-                cin.ignore();
-                cout << "Enter participant contact info: ";
-                getline(cin, contactInfo);
-                ems.registerParticipant(eventName, name, studentID, contactInfo);
+                string eventName, participantName;
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                
+                // Validate event name
+                do {
+                    cout << "Enter event name (cannot be empty): ";
+                    getline(cin, eventName);
+                    if (eventName.empty()) {
+                        cout << "Event name cannot be empty. Please try again.\n";
+                    }
+                } while (eventName.empty());
+
+                // Validate participant name
+                do {
+                    cout << "Enter participant name (cannot be empty): ";
+                    getline(cin, participantName);
+                    if (participantName.empty()) {
+                        cout << "Participant name cannot be empty. Please try again.\n";
+                    }
+                } while (participantName.empty());
+
+                ems.registerParticipant(eventName, participantName);
                 break;
             }
             case 7:
@@ -427,9 +475,6 @@ int main() {
                 break;
             case 0:
                 cout << "Exiting the system. Goodbye!\n";
-                break;
-            default:
-                cout << "Invalid choice. Please try again.\n";
                 break;
         }
     } while (choice != 0);
