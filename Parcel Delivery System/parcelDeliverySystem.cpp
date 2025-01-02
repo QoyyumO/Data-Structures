@@ -4,7 +4,7 @@
 #include <stack>
 #include <list>
 #include <algorithm>
-#include <limits> // aided by AI for validation
+#include <limits> // for validation
 
 using namespace std;
 
@@ -39,8 +39,8 @@ private:
     priority_queue<Parcel, vector<Parcel>, ComparePriority> priorityQueue;
     queue<Parcel> loadingQueue;
     list<Parcel> deliveredParcels;
-    stack<pair<string, Parcel>> actionStack; // Stack for undo actions aided by AI
-    stack<pair<string, Parcel>> redoStack; // Stack for redo actions aided by AI
+    stack<pair<string, Parcel>> actionStack; // Stack for undo actions
+    stack<pair<string, Parcel>> redoStack; // Stack for redo actions
     BSTNode* root;
     int totalDelivered;
     int nextParcelId; // To keep track of the next parcel ID
@@ -83,7 +83,7 @@ public:
         cout << "Parcel registered: ID " << parcel.id << endl;
     }
 
-    // Load parcels onto delivery truck
+    // Load parcel one by one unto delivery truck
     void loadParcels() {
         if (!parcelList.empty()) {
             Parcel parcel = parcelList.front();
@@ -97,7 +97,7 @@ public:
         }
     }
 
-    // Deliver a parcel
+    // Deliver a parcel based on priority
     void deliverParcel() {
         if (!loadingQueue.empty()) {
             Parcel parcel = loadingQueue.front();
@@ -107,6 +107,16 @@ public:
             cout << "Delivered Parcel ID: " << parcel.id << " (Priority: " << parcel.priority << ")" << endl;
         } else {
             cout << "No parcels to deliver." << endl;
+        }
+    }
+
+    // Search for a parcel by ID
+    void searchParcelById(int id) {
+        BSTNode* result = searchBST(root, id);
+        if (result) {
+            cout << "Parcel found: ID: " << result->parcel.id << ", Recipient: " << result->parcel.recipient << endl;
+        } else {
+            cout << "Parcel not found." << endl;
         }
     }
 
@@ -166,16 +176,6 @@ public:
         }
     }
 
-    // Search for a parcel by ID
-    void searchParcelById(int id) {
-        BSTNode* result = searchBST(root, id);
-        if (result) {
-            cout << "Parcel found: ID: " << result->parcel.id << ", Recipient: " << result->parcel.recipient << endl;
-        } else {
-            cout << "Parcel not found." << endl;
-        }
-    }
-
     // Generate reports
     void generateReports() {
 
@@ -200,7 +200,7 @@ public:
                 cout << "ID: " << parcel.id << ", Priority: " << parcel.priority << endl;
             }
 
-            // Delivery routes used aided by AI
+            // Delivery routes used
            cout << "Delivery routes used (order of delivery as entered):\n";
             if (!deliveredParcels.empty()) {
                 auto it = deliveredParcels.begin();
@@ -240,7 +240,7 @@ int main() {
             cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Ignore invalid input
         }
 
-        cin.ignore(); // Clear input buffer for subsequent getline calls
+        cin.ignore(); 
 
         switch (choice) {
             case 1:
