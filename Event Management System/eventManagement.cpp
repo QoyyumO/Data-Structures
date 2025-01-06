@@ -123,25 +123,13 @@ private:
     }
 };
 
-// Unified Action Structure for Undo/Redo
-struct Action {
-    enum ActionType { REGISTER_PARTICIPANT, UPDATE_EVENT } type;
-    string eventName; // For both actions
-    string participantName; // For registration
-    string participantID; // For registration
-    string oldEventName; // For event update
-    string newEventName; // For event update
-    string category; // For event update
-    int priority; // For event update
-};
-
 // Event Management System Class
 class EventManagementSystem {
 private:
     EventBST eventBST;
     priority_queue<pair<int, EventNode*>, vector<pair<int, EventNode*>>, greater<>> scheduledEvents;
-    stack<Action> undoStack; // Unified stack for undo actions
-    stack<Action> redoStack; // Unified stack for redo actions
+    stack<pair<string, string>> undoStack; // Unified stack for undo actions
+    stack<pair<string, string>> redoStack; // Unified stack for redo actions
     queue<pair<string, string>> checkInQueue; // Pair of participant name and ID
     queue<pair<string,string>> checkedInParticipants; // To track checked-in participants
     int participantIDCounter = 1; // Automatic ID counter
@@ -152,7 +140,6 @@ public:
         EventNode* event = new EventNode(name, category);
         eventBST.insert(name, category);
         scheduledEvents.push({priority, event});
-        while (!redoStack.empty()) redoStack.pop();
     }
 
     // View Events by Category
@@ -202,10 +189,6 @@ public:
 
             cout << "Event updated successfully.\n";
 
-            // Push the action onto the undo stack for the event update
-            Action action = {Action::UPDATE_EVENT, "", "", "", oldName, newName, oldCategory, priority};
-            undoStack.push(action);
-            while (!redoStack.empty()) redoStack.pop(); // Clear redo stack
         } else {
             cout << "Event not found for update.\n";
         }
@@ -244,9 +227,8 @@ public:
             checkInQueue.push({name, participantID});
             cout << "Participant registered successfully.\n";
 
-            // Push the action onto the undo stack
-            Action action = {Action::REGISTER_PARTICIPANT, eventName, name, participantID, "", "", "", 0};
-            undoStack.push(action);
+        // Push the action onto the undo stack
+            undoStack.push({"register", eventName + "," + name});
             while (!redoStack.empty()) redoStack.pop(); // Clear redo stack
         } else {
             cout << "Event not found.\n";
@@ -274,92 +256,51 @@ public:
             cout << "No participants in check-in queue.\n";
         }
     }
-    void removeFromScheduledEvents(EventNode* eventToRemove) {
-    priority_queue<pair<int, EventNode*>, vector<pair<int, EventNode*>>, greater<>> tempQueue;
 
-    while (!scheduledEvents.empty()) {
-        auto scheduledEvent = scheduledEvents.top();
-        scheduledEvents.pop();
-
-        // Skip the event to be removed
-        if (scheduledEvent.second != eventToRemove) {
-            tempQueue.push(scheduledEvent);
-        }
-    }
-
-    scheduledEvents = tempQueue; // Update the scheduled events queue
-}
-
-     // Unified Undo Operation
+    //Undo Operation
     void undoOperation() {
-    if (!undoStack.empty()) {
-        Action lastAction = undoStack.top();
-        undoStack.pop();
-        redoStack.push(lastAction); // Push the action onto the redo stack
+        if (!undoStack.empty()) {
+            auto lastAction = undoStack.top();
+            undoStack.pop();
+            redoStack.push(lastAction); // Push the action onto the redo stack
 
-        if (lastAction.type == Action::REGISTER_PARTICIPANT) {
-            // Undo participant registration
-            EventNode* event = eventBST.search(lastAction.eventName);
-            if (event) {
-                event->participants.remove_if([&](const pair<string, string>& participant) {
-                    return participant.first == lastAction.participantName && participant.second == lastAction.participantID;
-                });
-                cout << "Undid registration of participant: " << lastAction.participantName << "\n";
+            if (lastAction.first == "register") {
+                string eventName, participantName;
+                size_t comma = lastAction.second.find(',');
+                eventName = lastAction.second.substr(0, comma);
+                participantName = lastAction.second.substr(comma + 1);
+                EventNode* event = eventBST.search(eventName);
+                if (event) {
+                    event->participants.remove_if([&](const pair<string, string>& participant) {
+                        return participant.first == participantName;
+                    });
+                    cout << "Undid registration of participant: " << participantName << "\n";
+                }
             }
-        } else if (lastAction.type == Action::UPDATE_EVENT) {
-            // Undo event update
-            // Remove the updated event from the scheduled events queue
-            EventNode* updatedEvent = eventBST.search(lastAction.newEventName);
-            if (updatedEvent) {
-                removeFromScheduledEvents(updatedEvent); // Remove from queue
-                eventBST.deleteEvent(lastAction.newEventName); // Delete the updated event
-            }
-
-            // Reinsert the old event into the BST and queue
-            eventBST.insert(lastAction.oldEventName, lastAction.category);
-            EventNode* oldEvent = eventBST.search(lastAction.oldEventName);
-            if (oldEvent) {
-                scheduledEvents.push({lastAction.priority, oldEvent});
-            }
-
-            cout << "Undid update of event: " << lastAction.newEventName << "\n";
+        } else {
+            cout << "No actions to undo.\n";
         }
-    } else {
-        cout << "No actions to undo.\n";
     }
-}
-    // Unified Redo Operation
+
+    // Redo Operation
     void redoOperation() {
-    if (!redoStack.empty()) {
-        Action lastAction = redoStack.top();
-        redoStack.pop();
-        undoStack.push(lastAction); // Push the action onto the undo stack
+        if (!redoStack.empty()) {
+            auto lastAction = redoStack.top();
+            redoStack.pop();
+            undoStack.push(lastAction); // Push the action onto the undo stack
 
-        if (lastAction.type == Action::REGISTER_PARTICIPANT) {
-            // Redo participant registration
-            registerParticipant(lastAction.eventName, lastAction.participantName);
-        } else if (lastAction.type == Action::UPDATE_EVENT) {
-            // Redo event update
-            // Remove the old event from the scheduled events queue
-            EventNode* oldEvent = eventBST.search(lastAction.oldEventName);
-            if (oldEvent) {
-                removeFromScheduledEvents(oldEvent); // Remove from queue
-                eventBST.deleteEvent(lastAction.oldEventName); // Delete the old event
+            if (lastAction.first == "register") {
+                string eventName, participantName;
+                size_t comma = lastAction.second.find(',');
+                eventName = lastAction.second.substr(0, comma);
+                participantName = lastAction.second.substr(comma + 1);
+                registerParticipant(eventName, participantName);
             }
-
-            // Insert the new event into the BST and queue
-            eventBST.insert(lastAction.newEventName, lastAction.category);
-            EventNode* updatedEvent = eventBST.search(lastAction.newEventName);
-            if (updatedEvent) {
-                scheduledEvents.push({lastAction.priority, updatedEvent});
-            }
-
-            cout << "Redid update of event: " << lastAction.newEventName << "\n";
+        } else {
+            cout << "No actions to redo.\n";
         }
-    } else {
-        cout << "No actions to redo.\n";
     }
-}
+
 
     void generateEventReport() {
         cout << "----- Event Report -----\n";
@@ -396,8 +337,8 @@ int main() {
         cout << "6. Register Participant\n";
         cout << "7. Process Check-in\n";
         cout << "8. View Next Check-in\n";
-        cout << "9. Undo Last Operation\n";
-        cout << "10. Redo Last Operation\n";
+        cout << "9. Undo Participants Registrastion\n";
+        cout << "10. Redo Participants Registrastion\n";
         cout << "11. Generate Event Report\n";
         cout << "0. Exit\n";
         cout << "Enter your choice: ";
